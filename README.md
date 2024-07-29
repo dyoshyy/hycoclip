@@ -125,7 +125,13 @@ python scripts/spatial_norm_dist.py --checkpoint-path checkpoints/hycoclip_vit_s
 
 ### Set-up training data - GRIT
 
-[TO ADD]
+Firstly, the raw GRIT dataset (in webdataset format) has to be downloaded following instructions of [huggingface/zzliang/GRIT](https://huggingface.co/datasets/zzliang/GRIT). We then pre-process the dataset by extracting out box information of each sample by running the following command:
+
+```
+python utils/prepare_GRIT_webdataset.py --raw_webdataset_path datasets/train/GRIT/raw \
+    --processed_webdataset_path datasets/train/GRIT/processed \
+    --max_num_processes 12
+```
 
 ### Training command
 

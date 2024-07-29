@@ -30,7 +30,7 @@ from hycoclip.optim import LinearWarmupCosineDecayLR, set_weight_decay_per_param
 
 
 dataset = L(ImageTextWebDataset)(
-    tarfiles=["/scratch-shared/apal/GRIT_processed/*.tar"],
+    tarfiles=["datasets/train/GRIT/processed/*.tar"],
     mapper=L(GroundedDatasetTarMapper)(
         image_transform=[
             L(T.RandomResizedCrop)(
