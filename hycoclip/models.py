@@ -1,3 +1,13 @@
+#---------------------------------------
+# Copyright (c) Meta Platforms, Inc. and affiliates.
+# All rights reserved.
+
+# This source code is licensed under the license found in the
+# LICENSE file in the root directory of this source tree.
+#---------------------------------------
+
+# Modified from github.com/facebookresearch/meru
+
 from __future__ import annotations
 
 import math
@@ -185,6 +195,7 @@ class MERU(CLIPBaseline):
         curv_init: float = 1.0,
         learn_curv: bool = True,
         entail_weight: float = 0.0,
+        use_boxes: bool = False,
         pixel_mean: tuple[float, float, float] = (0.485, 0.456, 0.406),
         pixel_std: tuple[float, float, float] = (0.229, 0.224, 0.225),
     ):
@@ -335,18 +346,8 @@ class MERU(CLIPBaseline):
 
 class HyCoCLIP(MERU):
     """
-    Our HyCoCLIP model, that modifies MERU and CLIP to embed images and text in a hyperbolic
-    space. Modifications are as follows:
-
-    1. Lift embeddings from encoders onto the Lorentz hyperboloid using
-       exponential map operator, instead of projecting via L2-normalization.
-
-    2. Modify the contrastive loss to use the negative Lorentzian distance as
-       a similarity measure instead of cosine similarity.
-
-    3. Use a textual entailment loss to enforce a partial-order relationship
-       between paired text and image embeddings (Note that an equivalent loss
-       for CLIP is not mathematically defined).
+    Our HyCoCLIP model, that modifies MERU and CLIP to embed images, texts and their localized box 
+    information hierarchically in a hyperbolic space.
     """
 
     def __init__(
@@ -357,22 +358,22 @@ class HyCoCLIP(MERU):
         curv_init: float = 1.0,
         learn_curv: bool = True,
         entail_weight: float = 0.0,
+        use_boxes: bool = True,
         pixel_mean: tuple[float, float, float] = (0.485, 0.456, 0.406),
         pixel_std: tuple[float, float, float] = (0.229, 0.224, 0.225),
     ):
         """
-        Un-documented args are same as `CLIPBaseline`.
+        Un-documented args are same as `MERU`.
 
         Args:
-            curv_init: Positive scalar that denotes negative Hyperboloid curvature.
-            learn_curv: Whether to learn the curvature parameter during training.
-            entail_weight: Weight for the entailment loss component.
+            use_boxes: Whether to use box images and texts for training.
         """
         super().__init__(visual, textual, embed_dim, curv_init, learn_curv, entail_weight, pixel_mean, pixel_std)
+        assert use_boxes, "HyCoCLIP requires box images and texts to function."
 
     def forward(
-        self, images: torch.Tensor, parent_images: torch.Tensor,
-        tokens: list[torch.Tensor], parent_tokens: list[torch.Tensor]
+        self, images: torch.Tensor, box_images: torch.Tensor,
+        tokens: list[torch.Tensor], box_tokens: list[torch.Tensor]
     ) -> dict[str, torch.Tensor]:
         """
         Args:
@@ -393,8 +394,8 @@ class HyCoCLIP(MERU):
         image_feats = self.encode_image(images, project=True)
         text_feats = self.encode_text(tokens, project=True)
 
-        parent_image_feats = self.encode_image(parent_images, project=True)
-        parent_text_feats = self.encode_text(parent_tokens, project=True)
+        box_image_feats = self.encode_image(box_images, project=True)
+        box_text_feats = self.encode_text(box_tokens, project=True)
 
         # Get features from all GPUs to increase negatives for contrastive loss.
         # These will be lists of tensors with length = world size.
@@ -412,8 +413,8 @@ class HyCoCLIP(MERU):
             # Compute logits for contrastive loss.
             image_logits = -L.pairwise_dist(image_feats, all_text_feats, _curv)
             text_logits = -L.pairwise_dist(text_feats, all_image_feats, _curv)
-            parent_image_logits = -L.pairwise_dist(parent_image_feats, all_text_feats, _curv)
-            parent_text_logits = -L.pairwise_dist(parent_text_feats, all_image_feats, _curv)
+            box_image_logits = -L.pairwise_dist(box_image_feats, all_text_feats, _curv)
+            box_text_logits = -L.pairwise_dist(box_text_feats, all_image_feats, _curv)
 
             # Compute cross entropy loss: we compute log probabilities and take the
             # diagonal elements as targets: image[i] should match text[i] in batch.
@@ -431,35 +432,35 @@ class HyCoCLIP(MERU):
             contrastive_loss = 0.25 * (
                 nn.functional.cross_entropy(_scale * image_logits, targets)
                 + nn.functional.cross_entropy(_scale * text_logits, targets)
-                + nn.functional.cross_entropy(_scale * parent_image_logits, targets)
-                + nn.functional.cross_entropy(_scale * parent_text_logits, targets)
+                + nn.functional.cross_entropy(_scale * box_image_logits, targets)
+                + nn.functional.cross_entropy(_scale * box_text_logits, targets)
             )
 
             # Hyperbolic entailment loss: text should entail matching image.
             _angle = L.oxy_angle(text_feats, image_feats, _curv)
             _aperture = L.half_aperture(text_feats, _curv)
 
-            _parent_angle = L.oxy_angle(parent_text_feats, parent_image_feats, _curv)
-            _parent_aperture = L.half_aperture(parent_text_feats, _curv)
+            _box_angle = L.oxy_angle(box_text_feats, box_image_feats, _curv)
+            _box_aperture = L.half_aperture(box_text_feats, _curv)
 
-            _cross_image_angle = L.oxy_angle(parent_image_feats, image_feats, _curv)
-            _parent_image_aperture = L.half_aperture(parent_image_feats, _curv)
+            _cross_image_angle = L.oxy_angle(box_image_feats, image_feats, _curv)
+            _box_image_aperture = L.half_aperture(box_image_feats, _curv)
 
-            _cross_text_angle = L.oxy_angle(parent_text_feats, text_feats, _curv)
-            _parent_text_aperture = L.half_aperture(parent_text_feats, _curv)
+            _cross_text_angle = L.oxy_angle(box_text_feats, text_feats, _curv)
+            _box_text_aperture = L.half_aperture(box_text_feats, _curv)
 
             # Hyperparameters for apertures
-            _global_aperture_thresh = 0.7
-            _local_aperture_thresh = 1.2
+            _global_aperture_thresh = 0.7   # inter-modal
+            _local_aperture_thresh = 1.2    # intra-modal
 
-            child_text_image_entailment_loss = torch.clamp(_angle - _global_aperture_thresh * _aperture, min=0).mean()
-            parent_text_image_entailment_loss = torch.clamp(_parent_angle - _global_aperture_thresh * _parent_aperture, min=0).mean()
-            cross_image_entailment_loss = torch.clamp(_cross_image_angle - _local_aperture_thresh * _parent_image_aperture, min=0).mean()
-            cross_text_entailment_loss = torch.clamp(_cross_text_angle - _local_aperture_thresh * _parent_text_aperture, min=0).mean()
+            text_image_entailment_loss = torch.clamp(_angle - _global_aperture_thresh * _aperture, min=0).mean()
+            box_text_image_entailment_loss = torch.clamp(_box_angle - _global_aperture_thresh * _box_aperture, min=0).mean()
+            cross_image_entailment_loss = torch.clamp(_cross_image_angle - _local_aperture_thresh * _box_image_aperture, min=0).mean()
+            cross_text_entailment_loss = torch.clamp(_cross_text_angle - _local_aperture_thresh * _box_text_aperture, min=0).mean()
             
             entailment_loss = 0.5 * (
-                child_text_image_entailment_loss 
-                + parent_text_image_entailment_loss 
+                text_image_entailment_loss 
+                + box_text_image_entailment_loss 
                 + cross_image_entailment_loss 
                 + cross_text_entailment_loss
             )
@@ -472,8 +473,8 @@ class HyCoCLIP(MERU):
             "loss": loss,
             "logging": {
                 "contrastive_loss": contrastive_loss,
-                "child_text_image_entailment_loss": child_text_image_entailment_loss,
-                "parent_text_image_entailment_loss": parent_text_image_entailment_loss,
+                "text_image_entailment_loss": text_image_entailment_loss,
+                "box_text_image_entailment_loss": box_text_image_entailment_loss,
                 "cross_image_entailment_loss": cross_image_entailment_loss,
                 "cross_text_entailment_loss": cross_text_entailment_loss,
                 "entailment_loss": entailment_loss,

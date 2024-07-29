@@ -60,7 +60,7 @@ python scripts/evaluate.py --config configs/eval_zero_shot_retrieval.py \
 
 3. **Hierarchical classification**:
 
-We use the WordNet hierarchy of the ImageNet class labels in `./assets/imagenet_synset` for the hierarchcial classification task. Use instructions mentioned in Point 1 to set-up ImageNet evaluation dataset. To evaluate HyCoCLIP-ViT-small on this task, run the following command:
+We use the WordNet hierarchy of the ImageNet class labels in `./assets/imagenet_synset` for the hierarchical classification task. Use instructions mentioned in **Point 1** to set-up ImageNet evaluation dataset. To evaluate HyCoCLIP-ViT-small on this task, run the following command:
 
 ```
 python scripts/evaluate.py --config configs/eval_hierarchical_metrics.py \
@@ -68,3 +68,45 @@ python scripts/evaluate.py --config configs/eval_hierarchical_metrics.py \
     --train-config configs/train_hycoclip_vit_s.py
 ```
 
+## Interpolating between points
+
+<img src="assets/interpolation.png" align="right" width="275"/>
+
+We use [grounded Flickr dataset](https://github.com/gligen/GLIGEN/blob/master/DATA/README.MD) (grounded in the same manner as GRIT) to populate the hyperbolic space. First, we download the dataset from [huggingface/gligen/flickr_tsv](https://huggingface.co/datasets/gligen/flickr_tsv/tree/main) using the following command:
+
+```
+huggingface-cli download gligen/flickr_tsv --repo-type dataset --local-dir ./datasets/flickr_grounded/tsvfiles/
+```
+
+Features for image-text-boxes are automatically generated and saved to a path using [`scripts/interpolating_points.py`](./scripts/interpolating_points.py). We use pictures from [pexels.com](https://pexels.com) to interpolate points in between their features and extract nearest images/texts from grounded flickr. This interpolation is between an image to the origin by default. Interpolation between images could be enabled with the flag `--image-to-image-traversal`. The command is as follows:
+
+```
+python scripts/interpolating_points.py --image-path assets/new_york.jpg --target-image-path assets/taj_mahal.jpg --image-to-image-traversal \
+    --steps 100 --checkpoint-path checkpoints/hycoclip_vit_s.pth --train-config configs/train_hycoclip_vit_s.py \
+    --data-path ./datasets/flickr_grounded/tsvfiles --feats-path ./datasets/flickr_grounded/flickr_grounded_feats.pt
+```
+
+Example output from the command:
+
+```
+Performing image to root traversals with source: assets/new_york.jpg...
+
+Texts retrieved from [IMAGE] -> [ROOT] traversal:
+  - 4502489690.jpg_[4.0, 3.0, 369.0, 497.0]
+  - A typical picture of New York City
+  - the New York City skyline
+  - skyline
+  - the city
+  - middle
+  - [ROOT]
+
+Performing image to image traversals with source: assets/new_york.jpg and target: assets/taj_mahal.jpg...
+Texts retrieved from [SOURCE IMAGE] -> [TARGET IMAGE] traversal:
+  - 4502489690.jpg_[4.0, 3.0, 369.0, 497.0]
+  - a bridge of old and new Asia
+  - a photograph of an indian landmark
+  - 2234681386.jpg_[2.0, 49.0, 373.0, 295.0]
+  - 11245644.jpg_[1.0, 80.0, 347.0, 305.0]
+```
+
+Image boxes are represented in the format [image].jpg_[xmin, ymin, xmax, ymax] and thus could be cropped-out separately if needed. Users are encouraged to try with their own images.

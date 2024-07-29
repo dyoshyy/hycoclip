@@ -1,12 +1,3 @@
-# Copyright (c) Meta Platforms, Inc. and affiliates.
-# All rights reserved.
-
-# This source code is licensed under the license found in the
-# LICENSE file in the root directory of this source tree.
-
-"""
-Evaluate a trained model using implementations from `meru.evaluation` module.
-"""
 from __future__ import annotations
 
 import argparse

@@ -1,8 +1,10 @@
+#---------------------------------------
 # Copyright (c) Meta Platforms, Inc. and affiliates.
 # All rights reserved.
 
 # This source code is licensed under the license found in the
 # LICENSE file in the root directory of this source tree.
+#---------------------------------------
 
 """
 List of class names per dataset, used to make prompts for zero-shot evaluation.

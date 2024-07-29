@@ -1,3 +1,13 @@
+#---------------------------------------
+# Copyright (c) Meta Platforms, Inc. and affiliates.
+# All rights reserved.
+
+# This source code is licensed under the license found in the
+# LICENSE file in the root directory of this source tree.
+#---------------------------------------
+
+# Modified from github.com/facebookresearch/meru
+
 """
 Each config file should have four dicts or OmegaConf objects:
 `dataset`, `model`, `optim`, and `train`.
@@ -47,6 +57,7 @@ model = L(HyCoCLIP)(
     curv_init=1.0,
     learn_curv=True,
     entail_weight=0.2,
+    use_boxes=True,
 )
 
 

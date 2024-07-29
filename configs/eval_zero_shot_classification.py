@@ -1,8 +1,10 @@
+#---------------------------------------
 # Copyright (c) Meta Platforms, Inc. and affiliates.
 # All rights reserved.
 
 # This source code is licensed under the license found in the
 # LICENSE file in the root directory of this source tree.
+#---------------------------------------
 
 from hycoclip.config import LazyCall as L
 from hycoclip.evaluation.classification import ZeroShotClassificationEvaluator
@@ -10,25 +12,25 @@ from hycoclip.evaluation.classification import ZeroShotClassificationEvaluator
 
 evaluator = L(ZeroShotClassificationEvaluator)(
     datasets_and_prompts={
-        # "imagenet": [
-        #     "i took a picture : itap of a {}.",
-        #     "pics : a bad photo of the {}.",
-        #     "pics : a origami {}.",
-        #     "pics : a photo of the large {}.",
-        #     "pics : a {} in a video game.",
-        #     "pics : art of the {}.",
-        #     "pics : a photo of the small {}.",
-        # ],
-        # "cars": [
-        #     "a photo of a {}.",
-        #     "a photo of the {}.",
-        #     "a photo of my {}.",
-        #     "i love my {}!",
-        #     "a photo of my dirty {}.",
-        #     "a photo of my clean {}.",
-        #     "a photo of my new {}.",
-        #     "a photo of my old {}.",
-        # ],
+        "imagenet": [
+            "i took a picture : itap of a {}.",
+            "pics : a bad photo of the {}.",
+            "pics : a origami {}.",
+            "pics : a photo of the large {}.",
+            "pics : a {} in a video game.",
+            "pics : art of the {}.",
+            "pics : a photo of the small {}.",
+        ],
+        "cars": [
+            "a photo of a {}.",
+            "a photo of the {}.",
+            "a photo of my {}.",
+            "i love my {}!",
+            "a photo of my dirty {}.",
+            "a photo of my clean {}.",
+            "a photo of my new {}.",
+            "a photo of my old {}.",
+        ],
         "food101": [
             "food : {}.",
             "food porn : {}.",

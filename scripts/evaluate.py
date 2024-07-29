@@ -1,11 +1,13 @@
+#---------------------------------------
 # Copyright (c) Meta Platforms, Inc. and affiliates.
 # All rights reserved.
 
 # This source code is licensed under the license found in the
 # LICENSE file in the root directory of this source tree.
+#---------------------------------------
 
 """
-Evaluate a trained model using implementations from `meru.evaluation` module.
+Evaluate a trained model using implementations from `hycoclip.evaluation` module.
 """
 from __future__ import annotations
 
@@ -23,7 +25,7 @@ from hycoclip.utils.checkpointing import CheckpointManager
 parser = argparse.ArgumentParser(description=__doc__)
 _AA = parser.add_argument
 _AA("--config", help="Path to an evaluation config file (.py)")
-_AA("--checkpoint-path", help="Path to checkpoint of a trained MERU/CLIP model.")
+_AA("--checkpoint-path", help="Path to checkpoint of a trained HyCoCLIP/MERU/CLIP model.")
 _AA("--train-config", help="Path to train config (.yaml/py) for given checkpoint.")
 
 
