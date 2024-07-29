@@ -111,16 +111,6 @@ Texts retrieved from [SOURCE IMAGE] -> [TARGET IMAGE] traversal:
 
 Image boxes are represented in the format [image].jpg_[xmin, ymin, xmax, ymax] and thus could be cropped-out separately if needed. Users are encouraged to try with their own images.
 
-## Visualizing spatial norms in hyperbolic space
-
-To visualize the histogram of spatial norms, run the following command:
-
-```
-python scripts/spatial_norm_dist.py --checkpoint-path checkpoints/hycoclip_vit_s.pth \
-    --train-config configs/train_hycoclip_vit_s.py \
-    --dist-save-path visualizations/radius_distribution_hycoclip_vit_s.png
-```
-
 ## Model Training
 
 ### Set-up training data - GRIT
@@ -133,6 +123,8 @@ python utils/prepare_GRIT_webdataset.py --raw_webdataset_path datasets/train/GRI
     --max_num_processes 12
 ```
 
+**Note: The processed dataset consumes 1T of storage space.**
+
 ### Training command
 
 To train a HyCoCLIP-ViT-small model, run the following command:
@@ -142,3 +134,13 @@ python scripts/train.py --config configs/train_hycoclip_vit_s.py --num-gpus 4 --
 ```
 
 Training hyperparameters could be easily modified in the config file or directly within the command (For e.g., add `train.total_batch_size=1024` to the command to change batch size).
+
+## Visualizing spatial norms in hyperbolic space
+
+The training data has to be preparaed first, following instructions in the previous section. To visualize the histogram of spatial norms, run the following command:
+
+```
+python scripts/spatial_norm_dist.py --checkpoint-path checkpoints/hycoclip_vit_s.pth \
+    --train-config configs/train_hycoclip_vit_s.py \
+    --dist-save-path visualizations/radius_distribution_hycoclip_vit_s.png
+```
