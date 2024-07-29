@@ -120,3 +120,19 @@ python scripts/spatial_norm_dist.py --checkpoint-path checkpoints/hycoclip_vit_s
     --train-config configs/train_hycoclip_vit_s.py \
     --dist-save-path visualizations/radius_distribution_hycoclip_vit_s.png
 ```
+
+## Model Training
+
+### Set-up training data - GRIT
+
+[TO ADD]
+
+### Training command
+
+To train a HyCoCLIP-ViT-small model, run the following command:
+
+```
+python scripts/train.py --config configs/train_hycoclip_vit_s.py --num-gpus 4 --output-dir ./train_results/hycoclip_vit_s --checkpoint-period 100000 --resume
+```
+
+Training hyperparameters could be easily modified in the config file or directly within the command (For e.g., add `train.total_batch_size=1024` to the command to change batch size).
