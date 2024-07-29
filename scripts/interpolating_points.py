@@ -30,7 +30,7 @@ from hycoclip.tokenizer import Tokenizer
 
 parser = argparse.ArgumentParser(description=__doc__)
 _AA = parser.add_argument
-_AA("--checkpoint-path", help="Path to checkpoint of a trained MERU/CLIP model.")
+_AA("--checkpoint-path", help="Path to checkpoint of a trained HyCoCLIP/MERU/CLIP model.")
 _AA("--train-config", help="Path to train config (.yaml/py) for given checkpoint.")
 _AA("--image-path", help="Path to an image (.jpg) for perfoming traversal.")
 _AA("--target-image-path", help="Path to an image (.jpg) for perfoming traversal to this target image.")

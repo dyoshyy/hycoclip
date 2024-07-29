@@ -44,6 +44,7 @@ checkpoints/
 output/
 train_results/
 jobs/
+visualizations/
 
 # vim stuff
 *.swp

@@ -17,7 +17,7 @@ from meru.tokenizer import Tokenizer
 
 parser = argparse.ArgumentParser(description=__doc__)
 _AA = parser.add_argument
-_AA("--checkpoint-path", help="Path to checkpoint of a trained MERU/CLIP model.")
+_AA("--checkpoint-path", help="Path to checkpoint of a trained HyCoCLIP/MERU/CLIP model.")
 _AA("--train-config", help="Path to train config (.yaml/py) for given checkpoint.")
 _AA("--embed-save-path", help="Path to save embeddings in .pkl format.")
 

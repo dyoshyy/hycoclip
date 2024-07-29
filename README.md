@@ -110,3 +110,13 @@ Texts retrieved from [SOURCE IMAGE] -> [TARGET IMAGE] traversal:
 ```
 
 Image boxes are represented in the format [image].jpg_[xmin, ymin, xmax, ymax] and thus could be cropped-out separately if needed. Users are encouraged to try with their own images.
+
+## Visualizing spatial norms in hyperbolic space
+
+To visualize the histogram of spatial norms, run the following command:
+
+```
+python scripts/spatial_norm_dist.py --checkpoint-path checkpoints/hycoclip_vit_s.pth \
+    --train-config configs/train_hycoclip_vit_s.py \
+    --dist-save-path visualizations/radius_distribution_hycoclip_vit_s.png
+```

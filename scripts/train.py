@@ -164,11 +164,11 @@ def main(_A: argparse.Namespace):
 
             if isinstance(model, HyCoCLIP):
                 tokens = tokenizer(batch["text"])
-                parent_tokens = tokenizer(batch["parent_text"])
+                box_tokens = tokenizer(batch["box_text"])
                 output_dict = model(batch["image"].to(device),
-                                    batch["parent_image"].to(device),
+                                    batch["box_image"].to(device),
                                     tokens,
-                                    parent_tokens)
+                                    box_tokens)
             else:
                 tokens = tokenizer(batch["text"])
                 output_dict = model(batch["image"].to(device), tokens)

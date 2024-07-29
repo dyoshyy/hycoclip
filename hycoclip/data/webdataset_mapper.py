@@ -120,12 +120,12 @@ class GroundedDatasetTarMapper:
         self.image_transform = T.Compose(image_transform)
 
     def __call__(self, dataset_dict: dict):
-        num_parents = int(dataset_dict["numparents.txt"])
-        random_parent = random.randrange(num_parents)
+        num_boxes = int(dataset_dict["numparents.txt"])
+        random_box = random.randrange(num_boxes)
         return {
             "__key__": dataset_dict["__key__"],
             "image": self.image_transform(dataset_dict["child.jpg"]),
             "text": dataset_dict["child.txt"],
-            "parent_image": self.image_transform(dataset_dict[f"parent{random_parent:03d}.jpg"]),
-            "parent_text": dataset_dict[f"parent{random_parent:03d}.txt"],
+            "box_image": self.image_transform(dataset_dict[f"parent{random_box:03d}.jpg"]),
+            "box_text": dataset_dict[f"parent{random_box:03d}.txt"],
         }

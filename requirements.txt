@@ -21,3 +21,4 @@ tensorflow
 tfds-nightly
 pandas
 gdown
+seaborn
