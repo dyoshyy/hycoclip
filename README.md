@@ -4,7 +4,9 @@ Avik Pal, Max van Spengler, Guido D’Amely, Alessandro Flaborea, Fabio Galasso,
 
 **Codebase forked and adapted from [MERU](https://github.com/facebookresearch/meru) having [LICENSE](https://github.com/facebookresearch/meru/blob/main/LICENSE).**
 
-<p align="center"><img src="assets/HyCoCLIP_diagram.png" width="75%"></p>
+<p align="center"><img src="assets/HyCoCLIP_diagram.jpg" width="75%" alt="HyCoCLIP diagram." title="HyCoCLIP diagram."></p>
+
+_Figure 1. (Top) Embeddings of image-text pairs and corresponding boxes from encoders are lifted onto the hyperbolic space. (Bottom-left) Both the full and local box information within images and texts are utilized for semantic and hierarchical representation learning. (Bottom-right) Zooming in to the enforced compositional structure of hyperbolic space. The external angle ϕ of a specific concept (T) is pushed to be within the aperture threshold ω of the general concept (T<sup>box</sup>)._
 
 ## Installing environment
 
@@ -109,7 +111,7 @@ Texts retrieved from [SOURCE IMAGE] -> [TARGET IMAGE] traversal:
   - 11245644.jpg_[1.0, 80.0, 347.0, 305.0]
 ```
 
-Image boxes are represented in the format [image].jpg_[xmin, ymin, xmax, ymax] and thus could be cropped-out separately if needed. Users are encouraged to try with their own images.
+Image boxes are represented in the format [image].jpg\_[xmin, ymin, xmax, ymax] and thus could be cropped-out separately if needed. Users are encouraged to try with their own images.
 
 ## Model Training
 
