@@ -111,7 +111,7 @@ Image boxes are represented in the format [image].jpg\_[xmin, ymin, xmax, ymax] 
 
 ### Set-up training data - GRIT
 
-Firstly, the raw GRIT dataset (in webdataset format) has to be downloaded following instructions of [huggingface/zzliang/GRIT](https://huggingface.co/datasets/zzliang/GRIT). We then pre-process the dataset by extracting out box information of each sample by running the following command:
+Firstly, the raw GRIT dataset (in webdataset format) has to be downloaded following instructions of [huggingface/zzliang/GRIT](https://huggingface.co/datasets/zzliang/GRIT). For faster training we pre-process the dataset by extracting out box information of each sample by running the following command:
 
 ```
 python utils/prepare_GRIT_webdataset.py --raw_webdataset_path datasets/train/GRIT/raw \
@@ -121,13 +121,13 @@ python utils/prepare_GRIT_webdataset.py --raw_webdataset_path datasets/train/GRI
 
 ### Training command
 
-To train a HyCoCLIP-ViT-small model, run the following command:
+To train a HyCoCLIP-ViT-S/16 model, run the following command:
 
 ```
 python scripts/train.py --config configs/train_hycoclip_vit_s.py --num-gpus 4 --output-dir ./train_results/hycoclip_vit_s --checkpoint-period 100000 --resume
 ```
 
-Training hyperparameters could be easily modified in the config file or directly within the command (For e.g., add `train.total_batch_size=1024` to the command to change batch size).
+Training hyperparameters could be easily modified in the [config files](./configs/) or directly within the command (For e.g., add `train.total_batch_size=768` to the command to change batch size).
 
 ## Visualizing spatial norms in hyperbolic space
 
