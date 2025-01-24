@@ -1,5 +1,7 @@
 # Compositional Entailment Learning for Hyperbolic Vision-Language Models
 
+[[Arxiv](https://arxiv.org/abs/2410.06912)]
+
 Avik Pal, Max van Spengler, Guido D’Amely, Alessandro Flaborea, Fabio Galasso, Pascal Mettes
 
 **Codebase adapted from [MERU](https://github.com/facebookresearch/meru).**
