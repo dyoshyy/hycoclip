@@ -143,8 +143,10 @@ python scripts/spatial_norm_dist.py --checkpoint-path checkpoints/hycoclip_vit_s
 
 ## Citing this work
 
-```
-@misc{PalSDFGM2024,
+If this work was helpful in your research, please use the following BibTex entry.
+
+```bibtex
+@article{PalSDFGM2024,
       title={Compositional Entailment Learning for Hyperbolic Vision-Language Models},
       author={Avik Pal and Max van Spengler and Guido Maria D'Amely di Melendugno and Alessandro Flaborea and Fabio Galasso and Pascal Mettes},
       year={2024},
