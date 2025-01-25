@@ -24,7 +24,7 @@ _AA("--embed-save-path", help="Path to save embeddings in .pkl format.")
 
 def create_hyperboloid_embed(x: Tensor, curv: float | Tensor = 1.0):
     """
-    Compute pairwise Lorentzian inner product between input vectors.
+    Compute the time dimension from spatial coordinates and return as Lorentzian N+1 dim vector.
 
     Args:
         x: Tensor of shape `(B1, D)` giving a space components of a batch
