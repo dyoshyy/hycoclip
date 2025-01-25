@@ -10,9 +10,9 @@ from loguru import logger
 from tqdm import tqdm
 import pickle
 
-from meru.config import LazyConfig, LazyFactory
-from meru.utils.checkpointing import CheckpointManager
-from meru.tokenizer import Tokenizer
+from hycoclip.config import LazyConfig, LazyFactory
+from hycoclip.utils.checkpointing import CheckpointManager
+from hycoclip.tokenizer import Tokenizer
 
 
 parser = argparse.ArgumentParser(description=__doc__)
@@ -69,47 +69,47 @@ def main(_A: argparse.Namespace):
     CheckpointManager(model=model).load(_A.checkpoint_path)
     model = model.eval()
 
-    all_child_image_feats, all_parent_image_feats = [], []
-    all_child_text_feats, all_parent_text_feats = [], []
+    all_image_feats, all_box_image_feats = [], []
+    all_text_feats, all_box_text_feats = [], []
     batches = 0
 
     for batch in tqdm(dataloader, desc=f"Generating representations..."):
 
         with torch.inference_mode():
             tokens = tokenizer(batch["text"])
-            parent_tokens = tokenizer(batch["parent_text"])
+            box_tokens = tokenizer(batch["box_text"])
 
-            child_image_feats = model.encode_image(batch["image"].to(model.device), project=True)
-            child_image_feats = create_hyperboloid_embed(child_image_feats, model.curv.exp())
+            image_feats = model.encode_image(batch["image"].to(model.device), project=True)
+            image_feats = create_hyperboloid_embed(image_feats, model.curv.exp())
 
-            parent_image_feats = model.encode_image(batch["parent_image"].to(model.device), project=True)
-            parent_image_feats = create_hyperboloid_embed(parent_image_feats, model.curv.exp())
+            box_image_feats = model.encode_image(batch["box_image"].to(model.device), project=True)
+            box_image_feats = create_hyperboloid_embed(box_image_feats, model.curv.exp())
 
-            child_text_feats = model.encode_text(tokens, project=True)
-            child_text_feats = create_hyperboloid_embed(child_text_feats, model.curv.exp())
+            text_feats = model.encode_text(tokens, project=True)
+            text_feats = create_hyperboloid_embed(text_feats, model.curv.exp())
 
-            parent_text_feats = model.encode_text(parent_tokens, project=True)
-            parent_text_feats = create_hyperboloid_embed(parent_text_feats, model.curv.exp())
+            box_text_feats = model.encode_text(box_tokens, project=True)
+            box_text_feats = create_hyperboloid_embed(box_text_feats, model.curv.exp())
 
-            all_child_image_feats.append(child_image_feats.to("cpu").detach().numpy())
-            all_parent_image_feats.append(parent_image_feats.to("cpu").detach().numpy())
-            all_child_text_feats.append(child_text_feats.to("cpu").detach().numpy())
-            all_parent_text_feats.append(parent_text_feats.to("cpu").detach().numpy())
+            all_image_feats.append(image_feats.to("cpu").detach().numpy())
+            all_box_image_feats.append(box_image_feats.to("cpu").detach().numpy())
+            all_text_feats.append(text_feats.to("cpu").detach().numpy())
+            all_box_text_feats.append(box_text_feats.to("cpu").detach().numpy())
             
             batches += 1
             if batches > 25:
                 break
         
-    all_child_image_feats = np.concatenate(all_child_image_feats, axis=0)
-    all_parent_image_feats = np.concatenate(all_parent_image_feats, axis=0)
-    all_child_text_feats = np.concatenate(all_child_text_feats, axis=0)
-    all_parent_text_feats = np.concatenate(all_parent_text_feats, axis=0)
+    all_image_feats = np.concatenate(all_image_feats, axis=0)
+    all_box_image_feats = np.concatenate(all_box_image_feats, axis=0)
+    all_text_feats = np.concatenate(all_text_feats, axis=0)
+    all_box_text_feats = np.concatenate(all_box_text_feats, axis=0)
     
     embed_dict = {
-        "child_image_feats": all_child_image_feats,
-        "parent_image_feats": all_parent_image_feats,
-        "child_text_feats": all_child_text_feats,
-        "parent_text_feats": all_parent_text_feats,
+        "image_feats": all_image_feats,
+        "box_image_feats": all_box_image_feats,
+        "text_feats": all_text_feats,
+        "box_text_feats": all_box_text_feats,
     }
 
     with open(_A.embed_save_path, "wb") as f:
