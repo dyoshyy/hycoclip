@@ -1,25 +1,20 @@
-import os
 import argparse
-import cv2
-import json
 import copy
 import glob
-import random
-import pickle
-import numpy as np
-from enum import Enum
-import albumentations as A
-import fsspec
-import webdataset as wds
 import logging
-from PIL import Image
-from multiprocessing import Process
+import os
+import pickle
+import random
 import time
-import pandas as pd
-import base64
-from io import BytesIO
-from torch.utils.data import IterableDataset
+from enum import Enum
+
+import albumentations as A
+import cv2
+import fsspec
 import matplotlib.pyplot as plt
+import numpy as np
+import webdataset as wds
+from torch.utils.data import IterableDataset
 
 logging.basicConfig(level=logging.INFO)
 
@@ -35,11 +30,13 @@ _INTER_STR_TO_CV2 = {
     "lanczos4": cv2.INTER_LANCZOS4,
 }
 
+
 def inter_str_to_cv2(inter_str):
     inter_str = inter_str.lower()
     if inter_str not in _INTER_STR_TO_CV2:
         raise ValueError(f"Invalid option for interpolation: {inter_str}")
     return _INTER_STR_TO_CV2[inter_str]
+
 
 def split_number_to_index_list(total_size, chunk_size):
     chunks = [[] for _ in range((total_size + chunk_size - 1) // chunk_size)]
@@ -92,7 +89,6 @@ class Resizer:
         self.upscale_interpolation = inter_str_to_cv2(upscale_interpolation)
         self.downscale_interpolation = inter_str_to_cv2(downscale_interpolation)
 
-
     def __call__(self, img):
         cv2.setNumThreads(1)
         if img is None:
@@ -110,23 +106,38 @@ class Resizer:
         if original_height * original_width > self.max_image_area:
             return None, None, None, None, None, "image area too large"
         # check if wrong aspect ratio
-        if max(original_height, original_width) / min(original_height, original_width) > self.max_aspect_ratio:
+        if (
+            max(original_height, original_width) / min(original_height, original_width)
+            > self.max_aspect_ratio
+        ):
             return None, None, None, None, None, "aspect ratio too large"
 
         # resizing in following conditions
         if self.resize_mode in (ResizeMode.keep_ratio, ResizeMode.center_crop):
             downscale = min(original_width, original_height) > self.image_size
             if not self.resize_only_if_bigger or downscale:
-                interpolation = self.downscale_interpolation if downscale else self.upscale_interpolation
-                img = A.smallest_max_size(img, self.image_size, interpolation=interpolation)
+                interpolation = (
+                    self.downscale_interpolation
+                    if downscale
+                    else self.upscale_interpolation
+                )
+                img = A.smallest_max_size(
+                    img, self.image_size, interpolation=interpolation
+                )
                 if self.resize_mode == ResizeMode.center_crop:
                     img = A.center_crop(img, self.image_size, self.image_size)
                 encode_needed = True
         elif self.resize_mode in (ResizeMode.border, ResizeMode.keep_ratio_largest):
             downscale = max(original_width, original_height) > self.image_size
             if not self.resize_only_if_bigger or downscale:
-                interpolation = self.downscale_interpolation if downscale else self.upscale_interpolation
-                img = A.longest_max_size(img, self.image_size, interpolation=interpolation)
+                interpolation = (
+                    self.downscale_interpolation
+                    if downscale
+                    else self.upscale_interpolation
+                )
+                img = A.longest_max_size(
+                    img, self.image_size, interpolation=interpolation
+                )
                 if self.resize_mode == ResizeMode.border:
                     img = A.pad(
                         img,
@@ -167,16 +178,18 @@ class WebDatasetSampleWriter:
         number_of_parents = len(parent_info)
         if img_str is not None:
             sample = {
-                "__key__": key, 
-                "child."+self.encode_format: img_str,
-                "child.txt" : str(caption) if caption is not None else "",
+                "__key__": key,
+                "child." + self.encode_format: img_str,
+                "child.txt": str(caption) if caption is not None else "",
                 "numparents.txt": str(number_of_parents),
-                }
-                
+            }
+
             for i in range(number_of_parents):
                 parent_img_str, parent_caption = parent_info[i]
-                sample[f"parent{i:03d}."+self.encode_format] = parent_img_str
-                sample[f"parent{i:03d}.txt"] = str(parent_caption) if parent_caption is not None else ""
+                sample[f"parent{i:03d}." + self.encode_format] = parent_img_str
+                sample[f"parent{i:03d}.txt"] = (
+                    str(parent_caption) if parent_caption is not None else ""
+                )
             self.tarwriter.write(sample)
 
     def close(self):
@@ -260,11 +273,13 @@ class ImageTextWebDataset(IterableDataset):
             yield from pipeline
 
 
-def shard_process(shard_id, tar_files, args, resizer, save_caption, oom_shard_count, encode_format):
+def shard_process(
+    shard_id, tar_files, args, resizer, save_caption, oom_shard_count, encode_format
+):
     logger.info(f"Creating shard {shard_id}")
     start_time = time.time()
 
-    crop_dim_cutoff = 32*32
+    crop_dim_cutoff = 32 * 32
     tarfile = tar_files[shard_id]
     dataset = ImageTextWebDataset(tarfiles=[tarfile], infinite_stream=False)
 
@@ -285,31 +300,33 @@ def shard_process(shard_id, tar_files, args, resizer, save_caption, oom_shard_co
         sample_key = sample["__key__"]
 
         if sample_key in split_annotations.keys():
-            caption = split_annotations[sample_key]['caption']
-            pil_image = sample['jpg']
+            caption = split_annotations[sample_key]["caption"]
+            pil_image = sample["jpg"]
             width, height = pil_image.size
             parent_info = []
-        
-            for annotation in split_annotations[sample_key]['annotations']:
-                box = annotation['box']
+
+            for annotation in split_annotations[sample_key]["annotations"]:
+                box = annotation["box"]
 
                 if (box[2] - box[0]) * (box[3] - box[1]) > crop_dim_cutoff:
                     cropped_image = pil_image.crop(box)
                     entity_img_str, _, _, _, _, error = resizer(np.array(cropped_image))
-                    parent_info.append((entity_img_str, annotation['entity']))
-                
+                    parent_info.append((entity_img_str, annotation["entity"]))
+
             img_str, _, _, _, _, error = resizer(np.array(pil_image))
 
             if len(parent_info) > 0:
                 sample_writer.write(sample_key, img_str, caption, parent_info)
 
     sample_writer.close()
-    logger.info(f"Shard {shard_id} took {time.time() - start_time} seconds") 
+    logger.info(f"Shard {shard_id} took {time.time() - start_time} seconds")
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--original_wd_path", type=str, help="RedCaps raw download directory")
+    parser.add_argument(
+        "--original_wd_path", type=str, help="RedCaps raw download directory"
+    )
     parser.add_argument("--tarfile", type=str, help="tarfile to process")
     parser.add_argument("--annos_path", type=str, help="Annotation path")
     parser.add_argument("--output_plot_dir", type=str, help="Output directory")
@@ -334,7 +351,7 @@ if __name__ == "__main__":
     )
 
     logger.info("Checking annotations")
-    crop_dim_cutoff = 32*32
+    crop_dim_cutoff = 32 * 32
     tarfile = os.path.join(args.original_wd_path, args.tarfile)
 
     dataset = ImageTextWebDataset(tarfiles=[tarfile], infinite_stream=False)
@@ -344,40 +361,40 @@ if __name__ == "__main__":
 
     with open(pkl_file, "rb") as f:
         split_annotations = pickle.load(f)
-    
+
     split_out_path = os.path.join(args.output_plot_dir, split_name)
     if not os.path.exists(split_out_path):
         os.makedirs(split_out_path)
-    
+
     for sample in dataset:
         sample_key = sample["__key__"]
 
         if sample_key in split_annotations.keys():
-            caption = split_annotations[sample_key]['caption']
-            pil_image = sample['jpg']
+            caption = split_annotations[sample_key]["caption"]
+            pil_image = sample["jpg"]
             parent_info = []
 
-            for annotation in split_annotations[sample_key]['annotations']:
-                box = annotation['box']
+            for annotation in split_annotations[sample_key]["annotations"]:
+                box = annotation["box"]
 
                 if (box[2] - box[0]) * (box[3] - box[1]) > crop_dim_cutoff:
                     cropped_image = pil_image.crop(box)
                     entity_img, _, _, _, _, error = resizer(np.array(cropped_image))
-                    parent_info.append((entity_img, annotation['entity']))
-                
+                    parent_info.append((entity_img, annotation["entity"]))
+
             img, _, _, _, _, error = resizer(np.array(pil_image))
-    
+
             # Combined image of image and its crops
             total_plots = len(parent_info) + 1
             fig, axes = plt.subplots(1, total_plots, figsize=(20, 20))
             axes[0].imshow(img)
             axes[0].set_title(caption)
-            axes[0].axis('off')
+            axes[0].axis("off")
 
             for i, (entity_img, entity) in enumerate(parent_info):
-                axes[i+1].imshow(entity_img)
-                axes[i+1].set_title(entity)
-                axes[i+1].axis('off')
-            
+                axes[i + 1].imshow(entity_img)
+                axes[i + 1].set_title(entity)
+                axes[i + 1].axis("off")
+
             # Save the plot
             plt.savefig(os.path.join(split_out_path, f"{sample_key}.png"))

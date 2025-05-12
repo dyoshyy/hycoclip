@@ -1,10 +1,10 @@
-#---------------------------------------
+# ---------------------------------------
 # Copyright (c) Meta Platforms, Inc. and affiliates.
 # All rights reserved.
 
 # This source code is licensed under the license found in the
 # LICENSE file in the root directory of this source tree.
-#---------------------------------------
+# ---------------------------------------
 
 # Modified from github.com/facebookresearch/meru
 
@@ -23,6 +23,7 @@ while calculating the time component according to the Hyperboloid constraint:
 
     `x_time = torch.sqrt(1 / curv + torch.norm(x_space) ** 2)`
 """
+
 from __future__ import annotations
 
 import math
@@ -239,6 +240,6 @@ def oxy_angle_eval(x: Tensor, y: Tensor, curv: float | Tensor = 1.0, eps: float 
     logger.info(f"acos_denom shape: {acos_denom.size()}")
 
     acos_input = acos_numer / (torch.norm(x, dim=-1, keepdim=True).T * acos_denom + eps)
-    _angle = - torch.acos(torch.clamp(acos_input, min=-1 + eps, max=1 - eps))
+    _angle = -torch.acos(torch.clamp(acos_input, min=-1 + eps, max=1 - eps))
 
     return _angle

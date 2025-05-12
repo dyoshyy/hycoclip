@@ -126,6 +126,8 @@ class GroundedDatasetTarMapper:
             "__key__": dataset_dict["__key__"],
             "image": self.image_transform(dataset_dict["child.jpg"]),
             "text": dataset_dict["child.txt"],
-            "box_image": self.image_transform(dataset_dict[f"parent{random_box:03d}.jpg"]),
+            "box_image": self.image_transform(
+                dataset_dict[f"parent{random_box:03d}.jpg"]
+            ),
             "box_text": dataset_dict[f"parent{random_box:03d}.txt"],
         }

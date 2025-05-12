@@ -1,16 +1,17 @@
-#---------------------------------------
+# ---------------------------------------
 # Copyright (c) Meta Platforms, Inc. and affiliates.
 # All rights reserved.
 
 # This source code is licensed under the license found in the
 # LICENSE file in the root directory of this source tree.
-#---------------------------------------
+# ---------------------------------------
 
 """
 Collection of common utilities for distributed training. These are wrappers over
 functions from :mod:`torch.distributed` module, but they do not raise exceptions
 in absence of multi-GPU or CPU mode, and fall back to sensible default behavior.
 """
+
 from __future__ import annotations
 
 from typing import Callable

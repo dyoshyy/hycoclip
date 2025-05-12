@@ -1,10 +1,10 @@
-#---------------------------------------
+# ---------------------------------------
 # Copyright (c) Meta Platforms, Inc. and affiliates.
 # All rights reserved.
 
 # This source code is licensed under the license found in the
 # LICENSE file in the root directory of this source tree.
-#---------------------------------------
+# ---------------------------------------
 
 # Modified from github.com/facebookresearch/meru
 
@@ -267,7 +267,8 @@ class MERU(CLIPBaseline):
         return text_feats
 
     def forward(
-        self, images: torch.Tensor,
+        self,
+        images: torch.Tensor,
         tokens: list[torch.Tensor],
     ) -> dict[str, torch.Tensor]:
         """
@@ -346,7 +347,7 @@ class MERU(CLIPBaseline):
 
 class HyCoCLIP(MERU):
     """
-    Our HyCoCLIP model, that modifies MERU and CLIP to embed images, texts and their localized box 
+    Our HyCoCLIP model, that modifies MERU and CLIP to embed images, texts and their localized box
     information hierarchically in a hyperbolic space.
     """
 
@@ -368,12 +369,24 @@ class HyCoCLIP(MERU):
         Args:
             use_boxes: Whether to use box images and texts for training.
         """
-        super().__init__(visual, textual, embed_dim, curv_init, learn_curv, entail_weight, pixel_mean, pixel_std)
+        super().__init__(
+            visual,
+            textual,
+            embed_dim,
+            curv_init,
+            learn_curv,
+            entail_weight,
+            pixel_mean,
+            pixel_std,
+        )
         assert use_boxes, "HyCoCLIP requires box images and texts to function."
 
     def forward(
-        self, images: torch.Tensor, box_images: torch.Tensor,
-        tokens: list[torch.Tensor], box_tokens: list[torch.Tensor]
+        self,
+        images: torch.Tensor,
+        box_images: torch.Tensor,
+        tokens: list[torch.Tensor],
+        box_tokens: list[torch.Tensor],
     ) -> dict[str, torch.Tensor]:
         """
         Args:
@@ -405,7 +418,6 @@ class HyCoCLIP(MERU):
         # shape: (batch_size * world_size, embed_dim)
         all_image_feats = torch.cat(all_image_feats, dim=0)
         all_text_feats = torch.cat(all_text_feats, dim=0)
-
 
         # Compute all necessary loss components. We enclose the entire block with
         # autocast to force a higher floating point precision.
@@ -450,18 +462,26 @@ class HyCoCLIP(MERU):
             _box_text_aperture = L.half_aperture(box_text_feats, _curv)
 
             # Hyperparameters for apertures
-            _global_aperture_thresh = 0.7   # inter-modal
-            _local_aperture_thresh = 1.2    # intra-modal
+            _global_aperture_thresh = 0.7  # inter-modal
+            _local_aperture_thresh = 1.2  # intra-modal
 
-            text_image_entailment_loss = torch.clamp(_angle - _global_aperture_thresh * _aperture, min=0).mean()
-            box_text_image_entailment_loss = torch.clamp(_box_angle - _global_aperture_thresh * _box_aperture, min=0).mean()
-            cross_image_entailment_loss = torch.clamp(_cross_image_angle - _local_aperture_thresh * _box_image_aperture, min=0).mean()
-            cross_text_entailment_loss = torch.clamp(_cross_text_angle - _local_aperture_thresh * _box_text_aperture, min=0).mean()
-            
+            text_image_entailment_loss = torch.clamp(
+                _angle - _global_aperture_thresh * _aperture, min=0
+            ).mean()
+            box_text_image_entailment_loss = torch.clamp(
+                _box_angle - _global_aperture_thresh * _box_aperture, min=0
+            ).mean()
+            cross_image_entailment_loss = torch.clamp(
+                _cross_image_angle - _local_aperture_thresh * _box_image_aperture, min=0
+            ).mean()
+            cross_text_entailment_loss = torch.clamp(
+                _cross_text_angle - _local_aperture_thresh * _box_text_aperture, min=0
+            ).mean()
+
             entailment_loss = 0.5 * (
-                text_image_entailment_loss 
-                + box_text_image_entailment_loss 
-                + cross_image_entailment_loss 
+                text_image_entailment_loss
+                + box_text_image_entailment_loss
+                + cross_image_entailment_loss
                 + cross_text_entailment_loss
             )
 

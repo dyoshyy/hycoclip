@@ -1,23 +1,25 @@
 from __future__ import annotations
 
 import argparse
+import pickle
 
 import numpy as np
 import torch
-from torch import Tensor
-from omegaconf import OmegaConf
 from loguru import logger
+from omegaconf import OmegaConf
+from torch import Tensor
 from tqdm import tqdm
-import pickle
 
 from hycoclip.config import LazyConfig, LazyFactory
-from hycoclip.utils.checkpointing import CheckpointManager
 from hycoclip.tokenizer import Tokenizer
-
+from hycoclip.utils.checkpointing import CheckpointManager
 
 parser = argparse.ArgumentParser(description=__doc__)
 _AA = parser.add_argument
-_AA("--checkpoint-path", help="Path to checkpoint of a trained HyCoCLIP/MERU/CLIP model.")
+_AA(
+    "--checkpoint-path",
+    help="Path to checkpoint of a trained HyCoCLIP/MERU/CLIP model.",
+)
 _AA("--train-config", help="Path to train config (.yaml/py) for given checkpoint.")
 _AA("--embed-save-path", help="Path to save embeddings in .pkl format.")
 
@@ -73,17 +75,22 @@ def main(_A: argparse.Namespace):
     all_text_feats, all_box_text_feats = [], []
     batches = 0
 
-    for batch in tqdm(dataloader, desc=f"Generating representations..."):
-
+    for batch in tqdm(dataloader, desc="Generating representations..."):
         with torch.inference_mode():
             tokens = tokenizer(batch["text"])
             box_tokens = tokenizer(batch["box_text"])
 
-            image_feats = model.encode_image(batch["image"].to(model.device), project=True)
+            image_feats = model.encode_image(
+                batch["image"].to(model.device), project=True
+            )
             image_feats = create_hyperboloid_embed(image_feats, model.curv.exp())
 
-            box_image_feats = model.encode_image(batch["box_image"].to(model.device), project=True)
-            box_image_feats = create_hyperboloid_embed(box_image_feats, model.curv.exp())
+            box_image_feats = model.encode_image(
+                batch["box_image"].to(model.device), project=True
+            )
+            box_image_feats = create_hyperboloid_embed(
+                box_image_feats, model.curv.exp()
+            )
 
             text_feats = model.encode_text(tokens, project=True)
             text_feats = create_hyperboloid_embed(text_feats, model.curv.exp())
@@ -95,16 +102,16 @@ def main(_A: argparse.Namespace):
             all_box_image_feats.append(box_image_feats.to("cpu").detach().numpy())
             all_text_feats.append(text_feats.to("cpu").detach().numpy())
             all_box_text_feats.append(box_text_feats.to("cpu").detach().numpy())
-            
+
             batches += 1
             if batches > 25:
                 break
-        
+
     all_image_feats = np.concatenate(all_image_feats, axis=0)
     all_box_image_feats = np.concatenate(all_box_image_feats, axis=0)
     all_text_feats = np.concatenate(all_text_feats, axis=0)
     all_box_text_feats = np.concatenate(all_box_text_feats, axis=0)
-    
+
     embed_dict = {
         "image_feats": all_image_feats,
         "box_image_feats": all_box_image_feats,

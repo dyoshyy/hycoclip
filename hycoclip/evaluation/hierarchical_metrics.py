@@ -17,18 +17,24 @@ from hycoclip.evaluation.catalog import DatasetCatalog
 from hycoclip.evaluation.class_names import CLASS_NAMES
 from hycoclip.models import HyCoCLIP, MERU, CLIPBaseline
 from hycoclip.tokenizer import Tokenizer
-from hycoclip.evaluation.classification import ZeroShotClassificationEvaluator, _encode_dataset
+from hycoclip.evaluation.classification import (
+    ZeroShotClassificationEvaluator,
+    _encode_dataset,
+)
 import nltk
-nltk.download('wordnet')
+
+nltk.download("wordnet")
 from nltk.corpus import wordnet as wn
 
 
-IMAGENET_SYNSET_ORDER = 'assets/imagenet_synset/all_synsets.pkl'
-IMAGENET_WORDNET_GRAPH = 'assets/imagenet_synset/imagenet_isa.txt'
-ANCESTOR_INDICES = 'assets/imagenet_synset/all_ancestors_indices.pkl'
+IMAGENET_SYNSET_ORDER = "assets/imagenet_synset/all_synsets.pkl"
+IMAGENET_WORDNET_GRAPH = "assets/imagenet_synset/imagenet_isa.txt"
+ANCESTOR_INDICES = "assets/imagenet_synset/all_ancestors_indices.pkl"
+
 
 def def_value():
     return "Not Present"
+
 
 def create_nx_graph_from_edges(edge_file):
     """
@@ -37,14 +43,14 @@ def create_nx_graph_from_edges(edge_file):
     synset_map = {}
 
     for s in wn.all_synsets():
-        synset_map[s.offset()] = s.name().split('.')[0]
+        synset_map[s.offset()] = s.name().split(".")[0]
 
     graph = nx.DiGraph()
     edge_dict = defaultdict(def_value)
     synset_to_label = defaultdict(def_value)
 
-    with open(edge_file, 'r') as f:
-        reader = csv.reader(f, delimiter=' ')
+    with open(edge_file, "r") as f:
+        reader = csv.reader(f, delimiter=" ")
         for row in reader:
             edge_dict.setdefault(row[0], []).append(row[1])
             if row[0] not in list(graph.nodes):
@@ -55,13 +61,15 @@ def create_nx_graph_from_edges(edge_file):
                 synset_to_label[row[1]] = synset_map[int(row[1][1:])]
 
     for parent, children in edge_dict.items():
-      for child in children:
-        graph.add_edge(parent, child)
+        for child in children:
+            graph.add_edge(parent, child)
 
     return graph
 
 
-def hierarchical_based_metrics(predicted_labels, true_labels, ancestor_indices, graph, synsets_ordering):
+def hierarchical_based_metrics(
+    predicted_labels, true_labels, ancestor_indices, graph, synsets_ordering
+):
     """
     Calculate Hierarchical metrics
     """
@@ -71,7 +79,7 @@ def hierarchical_based_metrics(predicted_labels, true_labels, ancestor_indices, 
     jaccard = 0
     hierarchical_precision = 0
     hierarchical_recall = 0
-    
+
     for _b in range(predicted_labels.size(0)):
         pred_label = predicted_labels[_b]
         pred_synset = synsets_ordering[pred_label]
@@ -85,13 +93,24 @@ def hierarchical_based_metrics(predicted_labels, true_labels, ancestor_indices, 
         intersection = pred_ancestors.intersection(true_ancestors)
         union = pred_ancestors.union(true_ancestors)
 
-        tree_induced_error += nx.shortest_path_length(undirected_graph, source=pred_synset, target=true_synset)
-        least_common_ancestor += len(pred_ancestors) - len(intersection) + 1 # +1 for the actual class label
+        tree_induced_error += nx.shortest_path_length(
+            undirected_graph, source=pred_synset, target=true_synset
+        )
+        least_common_ancestor += (
+            len(pred_ancestors) - len(intersection) + 1
+        )  # +1 for the actual class label
         jaccard += len(intersection) / len(union)
         hierarchical_precision += len(intersection) / len(pred_ancestors)
         hierarchical_recall += len(intersection) / len(true_ancestors)
-        
-    return tree_induced_error, least_common_ancestor, jaccard, hierarchical_precision, hierarchical_recall, predicted_labels.size(0)
+
+    return (
+        tree_induced_error,
+        least_common_ancestor,
+        jaccard,
+        hierarchical_precision,
+        hierarchical_recall,
+        predicted_labels.size(0),
+    )
 
 
 class HierarchicalMetricsEvaluator(ZeroShotClassificationEvaluator):
@@ -129,8 +148,8 @@ class HierarchicalMetricsEvaluator(ZeroShotClassificationEvaluator):
         model = model.eval()
         tokenizer = Tokenizer()
 
-        imagenet_synset_order = pickle.load(open(IMAGENET_SYNSET_ORDER, 'rb'))
-        ancestor_indices = pickle.load(open(ANCESTOR_INDICES, 'rb'))
+        imagenet_synset_order = pickle.load(open(IMAGENET_SYNSET_ORDER, "rb"))
+        ancestor_indices = pickle.load(open(ANCESTOR_INDICES, "rb"))
         graph = create_nx_graph_from_edges(IMAGENET_WORDNET_GRAPH)
 
         results_dict = {}
@@ -170,7 +189,7 @@ class HierarchicalMetricsEvaluator(ZeroShotClassificationEvaluator):
                 ),
                 batch_size=128,
             )
-  
+
             image_feats, labels = _encode_dataset(loader, model, project=True)
 
             # Features returned by this function will be on CPU, move to device:
@@ -185,7 +204,10 @@ class HierarchicalMetricsEvaluator(ZeroShotClassificationEvaluator):
             total_val_size = 0
 
             # Evaluate in small batches of 256 instances.
-            for _feats, _labels in tqdm(zip(image_feats.split(256), labels.split(256)), desc=f"Calculating scores"):
+            for _feats, _labels in tqdm(
+                zip(image_feats.split(256), labels.split(256)),
+                desc=f"Calculating scores",
+            ):
                 # Compute pairwise similarity depending on model type:
                 if isinstance(model, (HyCoCLIP, MERU)):
                     scores = L.pairwise_inner(_feats, classifier, model.curv.exp())
@@ -193,13 +215,20 @@ class HierarchicalMetricsEvaluator(ZeroShotClassificationEvaluator):
                     scores = _feats @ classifier.T
 
                 predicted_labels = scores.argmax(dim=-1)
-                tree_induced_error, least_common_ancestor, jaccard, hierarchical_precision, hierarchical_recall, b_size = hierarchical_based_metrics(
-                    predicted_labels, 
-                    _labels, 
-                    ancestor_indices, 
-                    graph, 
-                    imagenet_synset_order
-                    )
+                (
+                    tree_induced_error,
+                    least_common_ancestor,
+                    jaccard,
+                    hierarchical_precision,
+                    hierarchical_recall,
+                    b_size,
+                ) = hierarchical_based_metrics(
+                    predicted_labels,
+                    _labels,
+                    ancestor_indices,
+                    graph,
+                    imagenet_synset_order,
+                )
                 total_tie += tree_induced_error
                 total_lca += least_common_ancestor
                 total_jaccard += jaccard
@@ -207,7 +236,7 @@ class HierarchicalMetricsEvaluator(ZeroShotClassificationEvaluator):
                 total_hier_recall += hierarchical_recall
 
                 total_val_size += b_size
-            
+
             avg_tie = total_tie / total_val_size
             avg_lca = total_lca / total_val_size
             avg_jaccard = total_jaccard / total_val_size

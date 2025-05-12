@@ -1,10 +1,10 @@
-#---------------------------------------
+# ---------------------------------------
 # Copyright (c) Meta Platforms, Inc. and affiliates.
 # All rights reserved.
 
 # This source code is licensed under the license found in the
 # LICENSE file in the root directory of this source tree.
-#---------------------------------------
+# ---------------------------------------
 
 from __future__ import annotations
 
@@ -37,9 +37,9 @@ class LinearWarmupCosineDecayLR(LambdaLR):
                 it `last_epoch` instead of `last_step` to keep the naming
                 consistent with other LR schedulers in PyTorch.
         """
-        assert (
-            warmup_steps < total_steps
-        ), "Warmup steps should be less than total steps."
+        assert warmup_steps < total_steps, (
+            "Warmup steps should be less than total steps."
+        )
 
         self.tsteps = total_steps
         self.wsteps = warmup_steps

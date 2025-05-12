@@ -1,15 +1,16 @@
-#---------------------------------------
+# ---------------------------------------
 # Copyright (c) Meta Platforms, Inc. and affiliates.
 # All rights reserved.
 
 # This source code is licensed under the license found in the
 # LICENSE file in the root directory of this source tree.
-#---------------------------------------
+# ---------------------------------------
 
 """
 Core module for lazily instantiating objects from arbitrary configs. Many design
 choices in this module are heavily influenced by Detectron2.
 """
+
 from __future__ import annotations
 
 import builtins

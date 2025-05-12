@@ -1,10 +1,10 @@
-#---------------------------------------
+# ---------------------------------------
 # Copyright (c) Meta Platforms, Inc. and affiliates.
 # All rights reserved.
 
 # This source code is licensed under the license found in the
 # LICENSE file in the root directory of this source tree.
-#---------------------------------------
+# ---------------------------------------
 
 # Modified from github.com/facebookresearch/meru
 
@@ -22,7 +22,10 @@ from torch.optim import AdamW
 from torchvision import transforms as T
 
 from hycoclip.config import LazyCall as L
-from hycoclip.data.webdataset_mapper import GroundedDatasetTarMapper, ImageTextWebDataset
+from hycoclip.data.webdataset_mapper import (
+    GroundedDatasetTarMapper,
+    ImageTextWebDataset,
+)
 from hycoclip.encoders.image_encoders import build_timm_vit
 from hycoclip.encoders.text_encoders import TransformerTextEncoder
 from hycoclip.models import HyCoCLIP
@@ -51,7 +54,9 @@ model = L(HyCoCLIP)(
         use_sincos2d_pos=True,
     ),
     textual=L(TransformerTextEncoder)(
-        arch="L12_W512", vocab_size=49408, context_length=77 # originally context_length=77
+        arch="L12_W512",
+        vocab_size=49408,
+        context_length=77,  # originally context_length=77
     ),
     embed_dim=512,
     curv_init=1.0,
@@ -67,9 +72,7 @@ optim = dict(
         params=L(set_weight_decay_per_param)(
             weight_decay="${..weight_decay}",
             gain_bias_decay=0.0,
-            exclude_params=[
-                "logit_scale", "visual_alpha", "textual_alpha", "curv"
-            ],
+            exclude_params=["logit_scale", "visual_alpha", "textual_alpha", "curv"],
         ),
         lr=5e-4,
         betas=(0.9, 0.98),

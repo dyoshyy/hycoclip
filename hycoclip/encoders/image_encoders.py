@@ -1,10 +1,10 @@
-#---------------------------------------
+# ---------------------------------------
 # Copyright (c) Meta Platforms, Inc. and affiliates.
 # All rights reserved.
 
 # This source code is licensed under the license found in the
 # LICENSE file in the root directory of this source tree.
-#---------------------------------------
+# ---------------------------------------
 
 import timm
 import torch
@@ -77,9 +77,9 @@ def build_timm_vit(
         grid_h = torch.arange(h, dtype=torch.float32)
         grid_w, grid_h = torch.meshgrid(grid_w, grid_h)
 
-        assert (
-            model.embed_dim % 4 == 0
-        ), "ViT embed_dim must be divisible by 4 for 2D sin-cos position embedding"
+        assert model.embed_dim % 4 == 0, (
+            "ViT embed_dim must be divisible by 4 for 2D sin-cos position embedding"
+        )
         pos_dim = model.embed_dim // 4
 
         omega = torch.arange(pos_dim, dtype=torch.float32) / pos_dim

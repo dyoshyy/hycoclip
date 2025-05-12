@@ -1,10 +1,10 @@
-#---------------------------------------
+# ---------------------------------------
 # Copyright (c) Meta Platforms, Inc. and affiliates.
 # All rights reserved.
 
 # This source code is licensed under the license found in the
 # LICENSE file in the root directory of this source tree.
-#---------------------------------------
+# ---------------------------------------
 
 # Modified from github.com/facebookresearch/meru
 
@@ -23,7 +23,9 @@ model = L(MERU)(
         use_sincos2d_pos=True,
     ),
     textual=L(TransformerTextEncoder)(
-        arch="L12_W512", vocab_size=49408, context_length=77 # originally context_length=77
+        arch="L12_W512",
+        vocab_size=49408,
+        context_length=77,  # originally context_length=77
     ),
     embed_dim=512,
     curv_init=1.0,

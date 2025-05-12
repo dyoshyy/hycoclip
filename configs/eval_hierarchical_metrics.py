@@ -15,5 +15,5 @@ evaluator = L(HierarchicalMetricsEvaluator)(
         ]
     },
     data_dir="/scratch-shared/apal/meru_eval",
-    image_size=224
+    image_size=224,
 )

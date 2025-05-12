@@ -1,10 +1,10 @@
-#---------------------------------------
+# ---------------------------------------
 # Copyright (c) Meta Platforms, Inc. and affiliates.
 # All rights reserved.
 
 # This source code is licensed under the license found in the
 # LICENSE file in the root directory of this source tree.
-#---------------------------------------
+# ---------------------------------------
 
 # Modified from github.com/facebookresearch/meru
 
@@ -122,7 +122,16 @@ class DatasetCatalog:
 
         # Change the root directory for some Torchvision datasets because their
         # auto-download location may clutter the dataset directory.
-        if name in ["aircraft", "country211", "imagenet", "sst2", "coco", "flickr30k", "cub2011", "cars"]:
+        if name in [
+            "aircraft",
+            "country211",
+            "imagenet",
+            "sst2",
+            "coco",
+            "flickr30k",
+            "cub2011",
+            "cars",
+        ]:
             root = str(Path(root) / name)
 
         # Map split from [train, val, test] to official name.

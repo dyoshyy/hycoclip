@@ -1,10 +1,10 @@
-#---------------------------------------
+# ---------------------------------------
 # Copyright (c) Meta Platforms, Inc. and affiliates.
 # All rights reserved.
 
 # This source code is licensed under the license found in the
 # LICENSE file in the root directory of this source tree.
-#---------------------------------------
+# ---------------------------------------
 
 from hycoclip.config import LazyCall as L
 from hycoclip.evaluation.classification import ZeroShotClassificationEvaluator
@@ -189,5 +189,5 @@ evaluator = L(ZeroShotClassificationEvaluator)(
         ],
     },
     data_dir="datasets/eval",
-    image_size=224
+    image_size=224,
 )

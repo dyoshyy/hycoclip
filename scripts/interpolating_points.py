@@ -2,43 +2,57 @@
 Interpolate between points using a trained HyCoCLIP, MERU or CLIP model,
 and a pool of text and images (and their encoded representations).
 """
+
 from __future__ import annotations
 
+import argparse
+import base64
+import json
 import os
+from enum import Enum
+from io import BytesIO
+
+import albumentations as A
 import cv2
 import numpy as np
-import argparse
 import pandas as pd
-import json
-from io import BytesIO
-from PIL import Image
-import base64
-from enum import Enum
-import albumentations as A
-from tqdm import tqdm
-
 import torch
-from torchvision import transforms as T
 from huggingface_hub import snapshot_download
+from PIL import Image
+from torchvision import transforms as T
+from tqdm import tqdm
 
 from hycoclip import lorentz as L
 from hycoclip.config import LazyConfig, LazyFactory
-from hycoclip.models import HyCoCLIP, MERU, CLIPBaseline
-from hycoclip.utils.checkpointing import CheckpointManager
+from hycoclip.models import MERU, CLIPBaseline, HyCoCLIP
 from hycoclip.tokenizer import Tokenizer
-
+from hycoclip.utils.checkpointing import CheckpointManager
 
 parser = argparse.ArgumentParser(description=__doc__)
 _AA = parser.add_argument
-_AA("--checkpoint-path", help="Path to checkpoint of a trained HyCoCLIP/MERU/CLIP model.")
+_AA(
+    "--checkpoint-path",
+    help="Path to checkpoint of a trained HyCoCLIP/MERU/CLIP model.",
+)
 _AA("--train-config", help="Path to train config (.yaml/py) for given checkpoint.")
 _AA("--image-path", help="Path to an image (.jpg) for perfoming traversal.")
-_AA("--target-image-path", help="Path to an image (.jpg) for perfoming traversal to this target image.")
+_AA(
+    "--target-image-path",
+    help="Path to an image (.jpg) for perfoming traversal to this target image.",
+)
 _AA("--steps", type=int, default=50, help="Number of traversal steps.")
-_AA("--download-data", action='store_true', help="Download the data for the Flickr dataset.")
+_AA(
+    "--download-data",
+    action="store_true",
+    help="Download the data for the Flickr dataset.",
+)
 _AA("--data-path", help="Path to download the data for the Flickr dataset.")
 _AA("--feats-path", help="Path to the features for the Flickr dataset.")
-_AA("--image-to-image-traversal", action='store_true', help="Do interpolated traversal from image to image.")
+_AA(
+    "--image-to-image-traversal",
+    action="store_true",
+    help="Do interpolated traversal from image to image.",
+)
 
 
 def interpolate(model, feats: torch.Tensor, root_feat: torch.Tensor, steps: int):
@@ -86,7 +100,7 @@ def calc_scores(
         for feats_batch in all_feats.split(65536):
             scores = L.pairwise_inner(image_feats, feats_batch, model.curv.exp())
             all_scores.append(scores)
-        
+
         all_scores = torch.cat(all_scores, dim=1)
         return all_scores
     else:
@@ -104,6 +118,7 @@ _INTER_STR_TO_CV2 = {
     "lanczos": cv2.INTER_LANCZOS4,
     "lanczos4": cv2.INTER_LANCZOS4,
 }
+
 
 def inter_str_to_cv2(inter_str):
     inter_str = inter_str.lower()
@@ -154,7 +169,6 @@ class Resizer:
         self.upscale_interpolation = inter_str_to_cv2(upscale_interpolation)
         self.downscale_interpolation = inter_str_to_cv2(downscale_interpolation)
 
-
     def __call__(self, img):
         cv2.setNumThreads(1)
         if img is None:
@@ -172,22 +186,37 @@ class Resizer:
         if original_height * original_width > self.max_image_area:
             return None, None, None, None, None, "image area too large"
         # check if wrong aspect ratio
-        if max(original_height, original_width) / min(original_height, original_width) > self.max_aspect_ratio:
+        if (
+            max(original_height, original_width) / min(original_height, original_width)
+            > self.max_aspect_ratio
+        ):
             return None, None, None, None, None, "aspect ratio too large"
 
         # resizing in following conditions
         if self.resize_mode in (ResizeMode.keep_ratio, ResizeMode.center_crop):
             downscale = min(original_width, original_height) > self.image_size
             if not self.resize_only_if_bigger or downscale:
-                interpolation = self.downscale_interpolation if downscale else self.upscale_interpolation
-                img = A.smallest_max_size(img, self.image_size, interpolation=interpolation)
+                interpolation = (
+                    self.downscale_interpolation
+                    if downscale
+                    else self.upscale_interpolation
+                )
+                img = A.smallest_max_size(
+                    img, self.image_size, interpolation=interpolation
+                )
                 if self.resize_mode == ResizeMode.center_crop:
                     img = A.center_crop(img, self.image_size, self.image_size)
         elif self.resize_mode in (ResizeMode.border, ResizeMode.keep_ratio_largest):
             downscale = max(original_width, original_height) > self.image_size
             if not self.resize_only_if_bigger or downscale:
-                interpolation = self.downscale_interpolation if downscale else self.upscale_interpolation
-                img = A.longest_max_size(img, self.image_size, interpolation=interpolation)
+                interpolation = (
+                    self.downscale_interpolation
+                    if downscale
+                    else self.upscale_interpolation
+                )
+                img = A.longest_max_size(
+                    img, self.image_size, interpolation=interpolation
+                )
                 if self.resize_mode == ResizeMode.border:
                     img = A.pad(
                         img,
@@ -200,22 +229,23 @@ class Resizer:
         height, width = img.shape[:2]
         # img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
         img = Image.fromarray(img)
-        
+
         return img, width, height, original_width, original_height, None
 
 
 @torch.inference_mode()
-def get_data_feats(device, 
-                   resizer: Resizer,
-                   tsv_path: str,
-                   model: HyCoCLIP | MERU | CLIPBaseline) -> tuple[list[str], torch.Tensor]:
+def get_data_feats(
+    device, resizer: Resizer, tsv_path: str, model: HyCoCLIP | MERU | CLIPBaseline
+) -> tuple[list[str], torch.Tensor]:
     tokenizer = Tokenizer()
     image_transform = T.Compose(
         [T.Resize(224, T.InterpolationMode.BICUBIC), T.CenterCrop(224), T.ToTensor()]
     )
-    
-    crop_dim_cutoff = 32*32
-    total_shards = 17            # Number of shards in the dataset. 17 for Flickr grounded dataset.
+
+    crop_dim_cutoff = 32 * 32
+    total_shards = (
+        17  # Number of shards in the dataset. 17 for Flickr grounded dataset.
+    )
     min_batch_size = 512
     previous_img_file_name = ""
     item_list = []
@@ -227,17 +257,27 @@ def get_data_feats(device,
     text_items = []
 
     for shard_num in range(total_shards):
-        sample_train_shard = pd.read_csv(f'{tsv_path}/train-{shard_num:04d}.tsv', sep='\t', header=None, names=['data_id', 'data'])
-        samples_in_shard = len(sample_train_shard['data'])
-        
-        for idx in tqdm(range(samples_in_shard), desc=f"Processing shard {shard_num+1}/{total_shards}"):
-            sample_data = sample_train_shard['data'][idx]
+        sample_train_shard = pd.read_csv(
+            f"{tsv_path}/train-{shard_num:04d}.tsv",
+            sep="\t",
+            header=None,
+            names=["data_id", "data"],
+        )
+        samples_in_shard = len(sample_train_shard["data"])
+
+        for idx in tqdm(
+            range(samples_in_shard),
+            desc=f"Processing shard {shard_num + 1}/{total_shards}",
+        ):
+            sample_data = sample_train_shard["data"][idx]
             sample_data = json.loads(sample_data)
-            img_file_name = sample_data['file_name']
+            img_file_name = sample_data["file_name"]
 
             if img_file_name != previous_img_file_name:
                 previous_img_file_name = img_file_name
-                image_bytes = base64.b64decode(bytes(sample_data['image'], encoding='raw_unicode_escape'))
+                image_bytes = base64.b64decode(
+                    bytes(sample_data["image"], encoding="raw_unicode_escape")
+                )
                 image = Image.open(BytesIO(image_bytes))
                 image_tensor, _, _, _, _, error = resizer(np.array(image))
                 image_tensor = image_transform(image_tensor)
@@ -247,12 +287,12 @@ def get_data_feats(device,
                 bboxes_of_image = []
                 texts_of_image = []
 
-            img_caption = sample_data['caption']
+            img_caption = sample_data["caption"]
             texts_to_encode.append(img_caption)
             text_items.append(img_caption)
 
-            for n, annotation in enumerate(sample_data['annos']):
-                bbox_dims = annotation['bbox']
+            for n, annotation in enumerate(sample_data["annos"]):
+                bbox_dims = annotation["bbox"]
                 if str(bbox_dims) not in bboxes_of_image:
                     bboxes_of_image.append(str(bbox_dims))
                     left = bbox_dims[0]
@@ -260,42 +300,49 @@ def get_data_feats(device,
                     right = left + bbox_dims[2]
                     bottom = top + bbox_dims[3]
 
-                    if (right-left)*(bottom-top) >= crop_dim_cutoff:
+                    if (right - left) * (bottom - top) >= crop_dim_cutoff:
                         entity_image = image.crop((left, top, right, bottom))
-                        entity_image, _, _, _, _, error = resizer(np.array(entity_image))
+                        entity_image, _, _, _, _, error = resizer(
+                            np.array(entity_image)
+                        )
                         entity_image = image_transform(entity_image)
                         images_to_encode.append(entity_image)
-                        image_items.append(f'{img_file_name}_{str(bbox_dims)}')
-                
-                tokens_positive = annotation['tokens_positive'][0]
-                entity_text = img_caption[tokens_positive[0]:tokens_positive[1]]
+                        image_items.append(f"{img_file_name}_{str(bbox_dims)}")
+
+                tokens_positive = annotation["tokens_positive"][0]
+                entity_text = img_caption[tokens_positive[0] : tokens_positive[1]]
                 if entity_text not in texts_of_image:
                     texts_of_image.append(entity_text)
                     texts_to_encode.append(entity_text)
                     text_items.append(entity_text)
 
-
             if len(images_to_encode) >= min_batch_size:
-                representation_list.append(model.encode_image(torch.stack(images_to_encode).to(device), project=True))
+                representation_list.append(
+                    model.encode_image(
+                        torch.stack(images_to_encode).to(device), project=True
+                    )
+                )
                 item_list.extend(image_items)
                 images_to_encode = []
                 image_items = []
-            
+
             if len(texts_to_encode) >= min_batch_size:
                 text_tokens = tokenizer(texts_to_encode)
                 representation_list.append(model.encode_text(text_tokens, project=True))
                 item_list.extend(text_items)
                 texts_to_encode = []
                 text_items = []
-    
-    representation_list.append(model.encode_image(torch.stack(images_to_encode).to(device), project=True))
+
+    representation_list.append(
+        model.encode_image(torch.stack(images_to_encode).to(device), project=True)
+    )
     item_list.extend(image_items)
     text_tokens = tokenizer(texts_to_encode)
     representation_list.append(model.encode_text(text_tokens, project=True))
     item_list.extend(text_items)
 
     item_feats = torch.cat(representation_list, dim=0)
-    
+
     return item_list, item_feats
 
 
@@ -335,8 +382,13 @@ def main(_A: argparse.Namespace):
 
     if not os.path.exists(_A.feats_path):
         if _A.download_data:
-            snapshot_download(repo_id="gligen/flickr_tsv", repo_type="dataset", local_dir=_A.data_path, local_dir_use_symlinks=False)
-        
+            snapshot_download(
+                repo_id="gligen/flickr_tsv",
+                repo_type="dataset",
+                local_dir=_A.data_path,
+                local_dir_use_symlinks=False,
+            )
+
         item_list, item_feats = get_data_feats(device, resizer, _A.data_path, model)
         torch.save((item_list, item_feats), _A.feats_path)
     else:
@@ -349,7 +401,6 @@ def main(_A: argparse.Namespace):
     print(f"Total items in item_list: {len(item_list)}")
     print(f"Size of item_feats: {item_feats.size()}")
 
-    
     # ------------------------------------------------------------------------
     print(f"\nPerforming image to root traversals with source: {_A.image_path}...")
     # ------------------------------------------------------------------------
@@ -364,28 +415,33 @@ def main(_A: argparse.Namespace):
 
     interp_feats = interpolate(model, image_feats, root_feat, _A.steps)
     nn1_scores = calc_scores(model, interp_feats, item_feats, has_root=True)
-    
+
     nn1_scores, _nn1_idxs = nn1_scores.max(dim=-1)
     nn1_texts = [item_list[_idx.item()] for _idx in _nn1_idxs]
 
     # De-duplicate retrieved texts (multiple points may have same NN) and print.
-    print(f"Texts retrieved from [IMAGE] -> [ROOT] traversal:")
+    print("Texts retrieved from [IMAGE] -> [ROOT] traversal:")
     unique_nn1_texts = []
     for _text in nn1_texts:
         if _text not in unique_nn1_texts:
             unique_nn1_texts.append(_text)
             print(f"  - {_text}")
-    
 
     if _A.image_to_image_traversal:
         # ------------------------------------------------------------------------
-        print(f"\nPerforming image to image traversals with source: {_A.image_path} and target: {_A.target_image_path}...")
+        print(
+            f"\nPerforming image to image traversals with source: {_A.image_path} and target: {_A.target_image_path}..."
+        )
         # ------------------------------------------------------------------------
         image = Image.open(_A.image_path).convert("RGB")
         target_image = Image.open(_A.target_image_path).convert("RGB")
 
         image_transform = T.Compose(
-            [T.Resize(224, T.InterpolationMode.BICUBIC), T.CenterCrop(224), T.ToTensor()]
+            [
+                T.Resize(224, T.InterpolationMode.BICUBIC),
+                T.CenterCrop(224),
+                T.ToTensor(),
+            ]
         )
         image, _, _, _, _, error = resizer(np.array(image))
         image = image_transform(image).to(device)
@@ -393,16 +449,18 @@ def main(_A: argparse.Namespace):
 
         target_image, _, _, _, _, error = resizer(np.array(target_image))
         target_image = image_transform(target_image).to(device)
-        target_image_feats = model.encode_image(target_image[None, ...], project=True)[0]
+        target_image_feats = model.encode_image(target_image[None, ...], project=True)[
+            0
+        ]
 
         interp_feats = interpolate(model, image_feats, target_image_feats, _A.steps)
         nn1_scores = calc_scores(model, interp_feats, item_feats, has_root=True)
-        
+
         nn1_scores, _nn1_idxs = nn1_scores.max(dim=-1)
         nn1_texts = [item_list[_idx.item()] for _idx in _nn1_idxs]
 
         # De-duplicate retrieved texts (multiple points may have same NN) and print.
-        print(f"Texts retrieved from [SOURCE IMAGE] -> [TARGET IMAGE] traversal:")
+        print("Texts retrieved from [SOURCE IMAGE] -> [TARGET IMAGE] traversal:")
         unique_nn1_texts = []
         for _text in nn1_texts:
             if _text not in unique_nn1_texts:

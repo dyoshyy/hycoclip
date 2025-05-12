@@ -1,10 +1,10 @@
-#---------------------------------------
+# ---------------------------------------
 # Copyright (c) Meta Platforms, Inc. and affiliates.
 # All rights reserved.
 
 # This source code is licensed under the license found in the
 # LICENSE file in the root directory of this source tree.
-#---------------------------------------
+# ---------------------------------------
 
 # Modified from github.com/facebookresearch/meru
 
@@ -82,7 +82,7 @@ class ZeroShotRetrievalEvaluator:
 
             for _ids, _queries in zip(text_ids.split(256), text_feats.split(256)):
                 # Compute pairwise similarity depending on model type:
-                if isinstance(model, (HyCoCLIP,MERU)):
+                if isinstance(model, (HyCoCLIP, MERU)):
                     scores = L.pairwise_inner(_queries, image_feats, model.curv.exp())
                 else:
                     scores = _queries @ image_feats.T

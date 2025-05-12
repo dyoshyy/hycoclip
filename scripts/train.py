@@ -1,24 +1,25 @@
-#---------------------------------------
+# ---------------------------------------
 # Copyright (c) Meta Platforms, Inc. and affiliates.
 # All rights reserved.
 
 # This source code is licensed under the license found in the
 # LICENSE file in the root directory of this source tree.
-#---------------------------------------
+# ---------------------------------------
 
 # Modified from github.com/facebookresearch/meru
 
 """
 Train a HyCoCLIP, MERU or CLIP model based on parameters specified by a config file.
 """
-import argparse
-import time
-import random
-from pathlib import Path
-import socket
 
-import torch
+import argparse
+import random
+import socket
+import time
+from pathlib import Path
+
 import numpy as np
+import torch
 from loguru import logger
 from omegaconf import OmegaConf
 from torch.cuda import amp
@@ -26,11 +27,10 @@ from torch.utils.tensorboard import SummaryWriter
 
 import hycoclip.utils.distributed as dist
 from hycoclip.config import LazyConfig, LazyFactory
+from hycoclip.models import HyCoCLIP
 from hycoclip.tokenizer import Tokenizer
 from hycoclip.utils.checkpointing import CheckpointManager
 from hycoclip.utils.timer import Timer
-from hycoclip.models import HyCoCLIP
-
 
 # fmt: off
 parser = argparse.ArgumentParser(description=__doc__)
@@ -165,10 +165,12 @@ def main(_A: argparse.Namespace):
             if isinstance(model, HyCoCLIP):
                 tokens = tokenizer(batch["text"])
                 box_tokens = tokenizer(batch["box_text"])
-                output_dict = model(batch["image"].to(device),
-                                    batch["box_image"].to(device),
-                                    tokens,
-                                    box_tokens)
+                output_dict = model(
+                    batch["image"].to(device),
+                    batch["box_image"].to(device),
+                    tokens,
+                    box_tokens,
+                )
             else:
                 tokens = tokenizer(batch["text"])
                 output_dict = model(batch["image"].to(device), tokens)
@@ -222,7 +224,7 @@ if __name__ == "__main__":
         # logger.info(f"Host name: {host_name}")
         # dist_url = f'tcp://{host_name}:{_random_port}'
         # logger.info(f"Distributed URL: {dist_url}")
-        
+
         hostname = socket.gethostname()
         IPAddr = socket.gethostbyname(hostname)
 
