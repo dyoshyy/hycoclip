@@ -287,7 +287,7 @@ def shard_process(
     start_time = time.time()
     sample_writer = WebDatasetSampleWriter(
         shard_id=shard_id,
-        output_folder=args.output_tar_directory,
+        output_folder=args.processed_webdataset_path,
         save_caption=save_caption,
         oom_shard_count=oom_shard_count,
         encode_format=encode_format,
@@ -380,7 +380,7 @@ if __name__ == "__main__":
         max_aspect_ratio=float("inf"),
     )
 
-    grit_tarfiles = [os.path.join(args.original_wd_path, "*.tar")]
+    grit_tarfiles = [os.path.join(args.raw_webdataset_path, "*.tar")]
     all_tarfiles = []
     for _path in grit_tarfiles:
         for _single_glob in _path.split():
@@ -389,9 +389,9 @@ if __name__ == "__main__":
     total_shards = len(all_tarfiles)
     logger.info(f"Total shards: {total_shards}")
 
-    if not os.path.exists(args.output_tar_directory):
-        logger.info(f"Creating output directory: {args.output_tar_directory}")
-        os.makedirs(args.output_tar_directory)
+    if not os.path.exists(args.processed_webdataset_path):
+        logger.info(f"Creating output directory: {args.processed_webdataset_path}")
+        os.makedirs(args.processed_webdataset_path)
 
     shard_list_split = split_number_to_index_list(total_shards, args.max_num_processes)
     logger.info(f"Total splits {len(shard_list_split)}")
