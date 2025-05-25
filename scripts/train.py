@@ -159,10 +159,17 @@ def main(_A: argparse.Namespace):
 
         timer.tic()
         optimizer.zero_grad()
-        with amp.autocast(enabled=_C.train.amp):
+        # with amp.autocast(enabled=_C.train.amp):
+        with torch.amp.autocast(device_type="cuda", enabled=_C.train.amp):
             # Get image and text (tokens) from batch and pass through model.
 
-            if isinstance(model, HyCoCLIP):
+            # Check if the model is HyCoCLIP, accounting for DDP wrapping
+            actual_model = (
+                model.module
+                if isinstance(model, torch.nn.parallel.DistributedDataParallel)
+                else model
+            )
+            if isinstance(actual_model, HyCoCLIP):
                 tokens = tokenizer(batch["text"])
                 box_tokens = tokenizer(batch["box_text"])
                 output_dict = model(
